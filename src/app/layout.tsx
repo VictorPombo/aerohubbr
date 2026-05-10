@@ -1,19 +1,6 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
 import { AuthProvider } from "@/contexts/AuthContext";
 import "./globals.css";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains",
-  subsets: ["latin"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "AeroGest — Gestão de Aviação Geral",
@@ -30,9 +17,14 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      className={`${inter.variable} ${jetbrainsMono.variable} dark h-full antialiased`}
+      className={`dark h-full antialiased font-inter`}
     >
-      <body className="min-h-full flex flex-col">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+      </head>
+      <body className="min-h-full flex flex-col font-sans">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
