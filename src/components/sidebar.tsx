@@ -23,6 +23,9 @@ import {
   ShieldCheck,
   Compass,
   Briefcase,
+  DollarSign,
+  Package,
+  Map,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -78,6 +81,24 @@ const navItems = [
     href: '/dashboard/safety',
     icon: ShieldAlert,
     roles: ['admin', 'dov', 'pilot', 'mechanic'],
+  },
+  {
+    label: 'Financeiro',
+    href: '/dashboard/financial',
+    icon: DollarSign,
+    roles: ['admin', 'owner'],
+  },
+  {
+    label: 'Estoque & Compras',
+    href: '/dashboard/inventory',
+    icon: Package,
+    roles: ['admin', 'mechanic'],
+  },
+  {
+    label: 'Operações (Solo/FBO)',
+    href: '/dashboard/operations',
+    icon: Map,
+    roles: ['admin', 'dov'],
   },
   {
     label: 'Agendamentos',
