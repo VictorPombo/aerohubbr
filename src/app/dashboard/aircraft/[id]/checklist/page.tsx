@@ -28,27 +28,29 @@ export default function ChecklistPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {templates.map(template => (
-          <Card key={template.id} className="glass-card hover:bg-white/[0.04] transition-colors group cursor-pointer border-aero-cyan/20">
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <Badge className="bg-aero-cyan/10 text-aero-cyan hover:bg-aero-cyan/20 mb-2">
-                    {template.type === 'pre_flight' ? 'Pré-Voo' : template.type === 'post_flight' ? 'Pós-Voo' : 'Emergência'}
-                  </Badge>
-                  <CardTitle className="text-lg">{template.name}</CardTitle>
+          <Link key={template.id} href={`/dashboard/aircraft/${id}/checklist/execute/${template.type}`}>
+            <Card className="glass-card hover:bg-white/[0.04] transition-colors group cursor-pointer border-aero-cyan/20">
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <Badge className="bg-aero-cyan/10 text-aero-cyan hover:bg-aero-cyan/20 mb-2">
+                      {template.type === 'pre_flight' ? 'Pré-Voo' : template.type === 'post_flight' ? 'Pós-Voo' : 'Emergência'}
+                    </Badge>
+                    <CardTitle className="text-lg">{template.name}</CardTitle>
+                  </div>
+                  <div className="p-2 rounded-full bg-aero-cyan/10 text-aero-cyan opacity-0 group-hover:opacity-100 transition-opacity">
+                    <PlayCircle className="w-6 h-6" />
+                  </div>
                 </div>
-                <div className="p-2 rounded-full bg-aero-cyan/10 text-aero-cyan opacity-0 group-hover:opacity-100 transition-opacity">
-                  <PlayCircle className="w-6 h-6" />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
-                <CheckSquare className="w-4 h-4" />
-                {template.items.length} itens a verificar
-              </p>
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <CheckSquare className="w-4 h-4" />
+                  {template.items.length} itens a verificar
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
     </div>

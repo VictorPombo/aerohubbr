@@ -135,6 +135,18 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              <div className="flex items-start space-x-2 pt-2">
+                <input
+                  type="checkbox"
+                  id="lgpd"
+                  required
+                  className="mt-1 h-4 w-4 rounded border-border/50 bg-background/50 text-aero-cyan focus:ring-aero-cyan/20"
+                />
+                <Label htmlFor="lgpd" className="text-xs text-muted-foreground leading-snug cursor-pointer">
+                  Concordo com os <button type="button" className="text-aero-cyan hover:underline">Termos de Uso</button> e a <button type="button" className="text-aero-cyan hover:underline">Política de Privacidade</button>, e consinto com o processamento dos meus dados conforme a LGPD.
+                </Label>
+              </div>
+
               <Button
                 type="submit"
                 disabled={isLoading}

@@ -1,12 +1,39 @@
 'use client';
 
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ShieldCheck, Download, Trash2, ArrowLeft } from 'lucide-react';
+import { ShieldCheck, Download, Trash2, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import Link from 'next/link';
 
 export default function PrivacyPage() {
   const { user } = useAuth();
+  const [openDelete, setOpenDelete] = useState(false);
+
+  function handleExport() {
+    if (!user) return;
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(user, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `aerogest_data_${user.id}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  }
+
+  function handleConfirmDelete() {
+    alert("Conta marcada para exclusão. Seus voos serão anonimizados.");
+    setOpenDelete(false);
+  }
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -53,7 +80,7 @@ export default function PrivacyPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <button className="btn-secondary flex items-center gap-2">
+          <button onClick={handleExport} className="btn-secondary flex items-center gap-2">
             <Download className="w-4 h-4" />
             Exportar Meus Dados (JSON)
           </button>
@@ -69,12 +96,30 @@ export default function PrivacyPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <button className="btn-primary bg-aero-rose hover:bg-aero-rose/90 text-white flex items-center gap-2">
+          <button onClick={() => setOpenDelete(true)} className="btn-primary bg-aero-rose hover:bg-aero-rose/90 text-white flex items-center gap-2">
             <Trash2 className="w-4 h-4" />
             Solicitar Exclusão Definitiva
           </button>
         </CardContent>
       </Card>
+
+      <Dialog open={openDelete} onOpenChange={setOpenDelete}>
+        <DialogContent className="sm:max-w-md border-aero-rose/20">
+          <DialogHeader>
+            <DialogTitle className="text-aero-rose flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5" /> Confirmar Exclusão
+            </DialogTitle>
+            <DialogDescription>
+              Esta ação é irreversível. Todos os seus dados pessoais, CMA e habilitações serão apagados. 
+              Seus registros no diário de bordo serão anonimizados (substituídos por "Piloto Removido").
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setOpenDelete(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>Confirmar Exclusão</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
