@@ -33,9 +33,9 @@ import type {
 
 export const mockUser: User = {
   id: 'usr_001',
-  full_name: 'Carlos Eduardo Mendes',
-  email: 'carlos@aerogest.app',
-  role: 'owner_active',
+  full_name: 'Thiago Teste',
+  email: 'thiagoteste@gmail.com',
+  role: 'super_admin',
   canac: '123456',
   avatar_url: undefined,
   created_at: '2025-01-15T10:00:00Z',
