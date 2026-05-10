@@ -105,8 +105,8 @@ export function Header() {
             <SheetTrigger className="lg:hidden flex items-center justify-center w-9 h-9 rounded-lg hover:bg-white/[0.06] transition-colors">
               <Menu className="w-5 h-5 text-muted-foreground" />
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 glass-strong border-r border-border/50 p-0" showCloseButton={false}>
-              <SheetHeader className="h-16 flex items-center px-4 border-b border-border/50">
+            <SheetContent side="left" className="w-72 glass-strong border-r border-border/50 p-0 flex flex-col" showCloseButton={false}>
+              <SheetHeader className="h-16 shrink-0 flex items-center px-4 border-b border-border/50">
                 <div className="flex items-center gap-3 w-full">
                   <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-aero-cyan/10 border border-aero-cyan/20">
                     <Plane className="w-5 h-5 text-aero-cyan" />
@@ -116,7 +116,7 @@ export function Header() {
                   </SheetTitle>
                 </div>
               </SheetHeader>
-              <nav className="px-3 py-4 space-y-1">
+              <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
                 {mobileNavItems.map((item) => {
                   const isActive =
                     pathname === item.href ||
@@ -141,7 +141,7 @@ export function Header() {
                   );
                 })}
               </nav>
-              <div className="absolute bottom-4 left-3 right-3">
+              <div className="shrink-0 p-3 border-t border-border/50">
                 <SheetClose
                   className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-aero-rose hover:bg-aero-rose/10 transition-all duration-200 w-full"
                   onClick={handleLogout}
