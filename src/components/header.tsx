@@ -21,6 +21,13 @@ import {
   BookOpen,
   Wrench,
   Calendar,
+  ShieldAlert,
+  UserCheck,
+  Compass,
+  Briefcase,
+  DollarSign,
+  Package,
+  Map,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -44,8 +51,15 @@ const mobileNavItems = [
   { label: 'Aeronaves', href: '/dashboard/aircraft', icon: Plane },
   { label: 'Diário de Bordo', href: '/dashboard/flights', icon: BookOpen },
   { label: 'Manutenção', href: '/dashboard/maintenance', icon: Wrench },
+  { label: 'Tripulação', href: '/dashboard/pilot-profile', icon: UserCheck },
+  { label: 'Vendas & Fretamento', href: '/dashboard/commercial', icon: Briefcase },
+  { label: 'Coordenação', href: '/dashboard/coordination', icon: Compass },
+  { label: 'Segurança', href: '/dashboard/safety', icon: ShieldAlert },
+  { label: 'Financeiro', href: '/dashboard/financial', icon: DollarSign },
+  { label: 'Estoque & Compras', href: '/dashboard/inventory', icon: Package },
+  { label: 'Operações (Solo/FBO)', href: '/dashboard/operations', icon: Map },
   { label: 'Agendamentos', href: '/dashboard/schedule', icon: Calendar },
-  { label: 'Perfil', href: '/dashboard/profile', icon: User },
+  { label: 'Perfil & LGPD', href: '/dashboard/profile', icon: User },
   { label: 'Configurações', href: '/dashboard/settings', icon: Settings },
 ];
 
