@@ -103,7 +103,7 @@ export default function LoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="piloto@aerogest.app"
+                  placeholder="admin@aerohub.com.br"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required

@@ -27,8 +27,8 @@ import type {
 
 export const mockUser: User = {
   id: 'usr_001',
-  full_name: 'Carlos Eduardo Mendes',
-  email: 'carlos@aerogest.app',
+  full_name: 'Administrador AeroHub',
+  email: 'admin@aerohub.com.br',
   role: 'owner_active',
   canac: '123456',
   avatar_url: undefined,
