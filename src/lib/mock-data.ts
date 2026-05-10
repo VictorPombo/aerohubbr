@@ -27,7 +27,7 @@ import type {
 
 export const mockUser: User = {
   id: 'usr_001',
-  full_name: 'Administrador AeroHub',
+  full_name: 'Admin',
   email: 'admin@aerohub.com.br',
   role: 'owner_active',
   canac: '123456',
@@ -185,7 +185,7 @@ export const mockFlightLogs: FlightLog[] = [
     id: 'flt_001',
     aircraft_id: 'acft_001',
     pilot_id: 'usr_001',
-    pilot_name: 'Carlos E. Mendes',
+    pilot_name: 'Admin',
     date: '2026-05-08',
     engine_start: '08:15',
     takeoff: '08:30',
@@ -211,7 +211,7 @@ export const mockFlightLogs: FlightLog[] = [
     id: 'flt_002',
     aircraft_id: 'acft_002',
     pilot_id: 'usr_002',
-    pilot_name: 'Ana Paula Ribeiro',
+    pilot_name: 'Admin',
     date: '2026-05-07',
     engine_start: '13:50',
     takeoff: '14:00',
@@ -236,7 +236,7 @@ export const mockFlightLogs: FlightLog[] = [
     id: 'flt_003',
     aircraft_id: 'acft_001',
     pilot_id: 'usr_001',
-    pilot_name: 'Carlos E. Mendes',
+    pilot_name: 'Admin',
     date: '2026-05-06',
     engine_start: '06:50',
     takeoff: '07:00',
@@ -336,7 +336,7 @@ export const mockAircraftMembers: AircraftMember[] = [
   {
     aircraft_id: 'acft_001',
     user_id: 'usr_001',
-    user_name: 'Carlos E. Mendes',
+    user_name: 'Admin',
     role: 'owner_active',
     monthly_quota_hours: 30,
     hours_used: 12.5,
@@ -345,7 +345,7 @@ export const mockAircraftMembers: AircraftMember[] = [
   {
     aircraft_id: 'acft_001',
     user_id: 'usr_002',
-    user_name: 'Ana Paula Ribeiro',
+    user_name: 'Admin',
     role: 'pilot',
     monthly_quota_hours: 20,
     hours_used: 8.0,
@@ -354,7 +354,7 @@ export const mockAircraftMembers: AircraftMember[] = [
   {
     aircraft_id: 'acft_002',
     user_id: 'usr_001',
-    user_name: 'Carlos E. Mendes',
+    user_name: 'Admin',
     role: 'owner_active',
     monthly_quota_hours: 25,
     hours_used: 5.5,
@@ -632,7 +632,7 @@ export const mockCTMDiscrepancies: CTMDiscrepancy[] = [
 export const mockFixedCosts: FinancialFixedCost[] = [
   // ── acft_001 ──
   { id: 'fc_001', aircraft_id: 'acft_001', category: 'hangar', description: 'Hangar SBJD — Vaga coberta', monthly_amount: 3500, start_date: '2025-01-01', active: true },
-  { id: 'fc_002', aircraft_id: 'acft_001', category: 'tripulacao', description: 'Piloto contratado — Carlos Mendes', monthly_amount: 8000, start_date: '2025-01-01', active: true },
+  { id: 'fc_002', aircraft_id: 'acft_001', category: 'tripulacao', description: 'Piloto contratado — Admin', monthly_amount: 8000, start_date: '2025-01-01', active: true },
   { id: 'fc_003', aircraft_id: 'acft_001', category: 'seguro', description: 'Seguro RETA + Casco — parcela mensal', monthly_amount: 4200, start_date: '2025-09-01', active: true },
   { id: 'fc_004', aircraft_id: 'acft_001', category: 'administracao', description: 'Taxa de administração operacional', monthly_amount: 2500, start_date: '2025-01-01', active: true },
   { id: 'fc_005', aircraft_id: 'acft_001', category: 'atualizacao_software_painel', description: 'Cartas Jeppesen + GPS Garmin', monthly_amount: 800, start_date: '2025-06-01', active: true },
