@@ -15,10 +15,10 @@ import { cn } from '@/lib/utils';
 import { MaintenanceDetailsSheet } from '@/components/maintenance-details-sheet';
 
 const statusConfig = {
-  ok: { label: 'Em Dia', color: 'text-aero-emerald', border: 'border-aero-emerald/20', bg: 'bg-aero-emerald/10' },
-  approaching: { label: 'Próximo', color: 'text-aero-amber', border: 'border-aero-amber/20', bg: 'bg-aero-amber/10' },
-  due: { label: 'Vencido', color: 'text-aero-rose', border: 'border-aero-rose/20', bg: 'bg-aero-rose/10' },
-  overdue: { label: 'Atrasado', color: 'text-aero-rose', border: 'border-aero-rose/20', bg: 'bg-aero-rose/10' },
+  ok: { label: 'Em Dia', color: 'text-aero-emerald', border: 'border-aero-emerald/20', bg: 'bg-aero-emerald/10', className: 'bg-aero-emerald/10 text-aero-emerald border-aero-emerald/20' },
+  approaching: { label: 'Próximo', color: 'text-aero-amber', border: 'border-aero-amber/20', bg: 'bg-aero-amber/10', className: 'bg-aero-amber/10 text-aero-amber border-aero-amber/20' },
+  due: { label: 'Vencido', color: 'text-aero-rose', border: 'border-aero-rose/20', bg: 'bg-aero-rose/10', className: 'bg-aero-rose/10 text-aero-rose border-aero-rose/20' },
+  overdue: { label: 'Atrasado', color: 'text-aero-rose', border: 'border-aero-rose/20', bg: 'bg-aero-rose/10', className: 'bg-aero-rose/10 text-aero-rose border-aero-rose/20' },
 };
 
 export default function MaintenancePage() {

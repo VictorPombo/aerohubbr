@@ -196,8 +196,6 @@ export interface FinancialHourConfig {
 
 // ─── Legacy (kept for backwards compat) ──────────────
 
-export type MaintenanceStatus = 'ok' | 'approaching' | 'due' | 'overdue';
-
 export interface MaintenanceAlert {
   id: string;
   aircraft_id: string;
