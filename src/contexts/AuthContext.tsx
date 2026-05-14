@@ -1,12 +1,13 @@
 'use client';
 
 // ═══════════════════════════════════════════════════════
-// AeroGest — Simulated Auth Context (Local-First MVP)
+// AeroGest — Supabase Auth Context
 // ═══════════════════════════════════════════════════════
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { User } from '@/types/models';
-import { mockUser } from '@/lib/mock-data';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
@@ -19,31 +20,120 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Start with null to match SSR — avoids hydration mismatch
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Restore session from localStorage after mount (client-only)
-  useEffect(() => {
-    const stored = localStorage.getItem('aerogest_auth_mvp');
-    if (stored === 'true') {
-      setUser(mockUser);
+  // Função para buscar o perfil completo do usuário (tabela profiles)
+  const fetchProfile = async (authUserId: string, email: string): Promise<User> => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUserId)
+        .single();
+
+      if (error) {
+        console.warn('Perfil não encontrado na tabela profiles. Retornando fallback.', error);
+        // Fallback caso a tabela profiles ainda não tenha sido populada ou criada
+        return {
+          id: authUserId,
+          email: email,
+          full_name: email.split('@')[0], // Nome extraído do e-mail
+          role: 'pilot', // Papel padrão
+          canac: '',
+          created_at: new Date().toISOString(),
+        };
+      }
+
+      return {
+        id: data.id,
+        email: email, // O email não fica na tabela profiles, pegamos do Auth
+        full_name: data.full_name,
+        role: data.role,
+        canac: data.anac_code || data.canac || '',
+        avatar_url: data.avatar_url,
+        created_at: data.created_at,
+      };
+    } catch (err) {
+      console.error('Erro ao buscar perfil:', err);
+      return {
+        id: authUserId,
+        email: email,
+        full_name: email.split('@')[0],
+        role: 'pilot',
+        created_at: new Date().toISOString(),
+      };
     }
-    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function initializeAuth() {
+      setIsLoading(true);
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Erro ao pegar sessão:', error);
+        if (mounted) setIsLoading(false);
+        return;
+      }
+
+      if (session?.user) {
+        const profile = await fetchProfile(session.user.id, session.user.email || '');
+        if (mounted) setUser(profile);
+      } else {
+        if (mounted) setUser(null);
+      }
+      
+      if (mounted) setIsLoading(false);
+    }
+
+    initializeAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        const profile = await fetchProfile(session.user.id, session.user.email || '');
+        setUser(profile);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const login = useCallback(async (_email: string, _password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
-    // Simulate network delay for realistic feel
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setUser(mockUser);
-    localStorage.setItem('aerogest_auth_mvp', 'true');
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setIsLoading(false);
+      throw error; // Lançamos o erro para a página de login tratar (exibir toast)
+    }
+
+    if (data.session?.user) {
+      const profile = await fetchProfile(data.session.user.id, data.session.user.email || '');
+      setUser(profile);
+    }
+    
     setIsLoading(false);
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    setIsLoading(true);
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('aerogest_auth_mvp');
+    setIsLoading(false);
   }, []);
 
   return (

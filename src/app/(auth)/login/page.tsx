@@ -1,7 +1,7 @@
 'use client';
 
 // ═══════════════════════════════════════════════════════
-// AeroGest — Login Page (Simulated Auth)
+// AeroGest — Login Page (Supabase Auth)
 // ═══════════════════════════════════════════════════════
 
 import { useState, useEffect } from 'react';
@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Plane, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Se já estiver logado, manda pro dashboard direto
   useEffect(() => {
@@ -29,8 +31,22 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    await login(email, password);
-    router.push('/dashboard');
+    setIsSubmitting(true);
+    
+    try {
+      await login(email, password);
+      toast.success('Login realizado com sucesso!');
+      router.push('/dashboard');
+    } catch (error: any) {
+      console.error('Erro de login:', error);
+      toast.error(
+        error.message === 'Invalid login credentials' 
+          ? 'E-mail ou senha incorretos.' 
+          : 'Ocorreu um erro ao tentar fazer login.'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   // Se estiver carregando a sessão, mostra um loader para evitar piscar a tela de login
@@ -91,7 +107,7 @@ export default function LoginPage() {
               Acesse sua conta
             </h2>
             <p className="text-xs text-center text-muted-foreground">
-              MVP Local — qualquer credencial é aceita
+              Digite suas credenciais de acesso
             </p>
           </CardHeader>
           <CardContent>
@@ -103,7 +119,7 @@ export default function LoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@aerohub.com.br"
+                  placeholder="seu@email.com.br"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -149,10 +165,10 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                disabled={isLoading}
+                disabled={isSubmitting}
                 className="w-full h-11 bg-aero-cyan hover:bg-aero-cyan-light text-aero-navy font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-aero-cyan/20"
               >
-                {isLoading ? (
+                {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Entrando...
@@ -180,7 +196,7 @@ export default function LoginPage() {
 
         {/* Version tag */}
         <p className="text-center text-xs text-muted-foreground/50 mt-6 mono-data">
-          AeroGest v1.0.0-mvp
+          AeroGest v1.0.0-beta
         </p>
       </div>
     </div>
