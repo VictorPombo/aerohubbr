@@ -63,6 +63,7 @@ export default function AircraftDetailLayout({
   const pathname = usePathname();
   const [aircraft, setAircraft] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [editOpen, setEditOpen] = useState(false);
 
   // Local edit state
   const [editReg, setEditReg] = useState('');
