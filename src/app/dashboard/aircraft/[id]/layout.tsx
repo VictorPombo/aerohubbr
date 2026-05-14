@@ -114,7 +114,7 @@ export default function AircraftDetailLayout({
     );
   }
 
-  const status = statusConfig[aircraft.status];
+  const status = statusConfig[aircraft.status as keyof typeof statusConfig] || statusConfig.active;
   const basePath = `/dashboard/aircraft/${id}`;
 
   function isTabActive(tabHref: string) {
