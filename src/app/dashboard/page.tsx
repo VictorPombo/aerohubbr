@@ -28,6 +28,7 @@ export default function DashboardPage() {
   });
 
   const [recentAircraft, setRecentAircraft] = useState<any[]>([]);
+  const [recentFlights, setRecentFlights] = useState<any[]>([]);
 
   // Carregar dados reais do Supabase
   const loadDashboardData = async () => {
@@ -53,6 +54,25 @@ export default function DashboardPage() {
 
       setMetrics({ aircraftCount, totalHours });
       setRecentAircraft(aircrafts.slice(0, 4)); // Pegar as 4 primeiras para a lista rápida
+      
+      // 3. Buscar Voos Recentes (Sprint 2)
+      if (aircrafts.length > 0) {
+        const aircraftIds = aircrafts.map(a => a.id);
+        const { data: flightsData, error: flightsError } = await supabase
+          .from('flight_logs')
+          .select(`
+            id, date, origin, destination, total_flight_hours, engine_time,
+            aircraft:aircraft_id(registration)
+          `)
+          .in('aircraft_id', aircraftIds)
+          .order('date', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(4);
+          
+        if (!flightsError && flightsData) {
+          setRecentFlights(flightsData);
+        }
+      }
       
     } catch (error) {
       console.error('Erro ao carregar dashboard:', JSON.stringify(error, null, 2), error);
@@ -219,23 +239,59 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Right column: Voos Recentes (Sprint 2 Preview) */}
-        <Card className="glass border-border/50 flex flex-col min-h-[300px] opacity-70">
+        {/* Right column: Voos Recentes (Sprint 2) */}
+        <Card className="glass border-border/50 flex flex-col min-h-[300px]">
           <CardHeader className="pb-3 border-b border-border/10">
             <CardTitle className="text-base font-semibold flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-aero-emerald" />
                 Voos Recentes
               </div>
-              <Badge variant="outline" className="text-[10px]">Sprint 2</Badge>
+              <Link href="/dashboard/flights/new" className="text-xs font-normal bg-aero-emerald text-aero-navy px-2 py-1 rounded hover:bg-aero-emerald-light transition-colors flex items-center gap-1">
+                <Plus className="w-3 h-3" /> Novo Voo
+              </Link>
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <Clock className="w-8 h-8 text-muted-foreground mb-3" />
-            <p className="text-sm font-medium">Diário de Bordo Vazio</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              O módulo de registro de voos será ativado no Sprint 2.
-            </p>
+          <CardContent className="p-0 flex-1 flex flex-col">
+            {isLoading ? (
+              <div className="p-5 space-y-4">
+                <div className="w-full h-12 bg-white/5 rounded animate-pulse" />
+                <div className="w-full h-12 bg-white/5 rounded animate-pulse" />
+              </div>
+            ) : recentFlights.length > 0 ? (
+              <div className="divide-y divide-border/10">
+                {recentFlights.map((flight) => (
+                  <div 
+                    key={flight.id} 
+                    className="flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-mono font-bold text-foreground">{flight.aircraft?.registration}</p>
+                        <span className="text-xs text-muted-foreground">{new Date(flight.date).toLocaleDateString('pt-BR')}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        <span className="text-aero-cyan">{flight.origin}</span> 
+                        <span className="mx-1">→</span> 
+                        <span className="text-aero-emerald">{flight.destination}</span>
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="mono-data font-semibold text-emerald-400">+{Number(flight.engine_time || flight.total_flight_hours || 0).toFixed(1)}h</p>
+                      <p className="text-[10px] text-muted-foreground uppercase">Tempo Motor</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center opacity-70">
+                <Clock className="w-8 h-8 text-muted-foreground mb-3" />
+                <p className="text-sm font-medium">Diário de Bordo Vazio</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Registre seu primeiro voo clicando no botão acima.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

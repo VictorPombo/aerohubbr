@@ -1,391 +1,336 @@
 'use client';
 
-// ═══════════════════════════════════════════════════════
-// AeroGest — Flight Registration Form
-// ═══════════════════════════════════════════════════════
-
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { mockAircraft } from '@/lib/mock-data';
-import { BookOpen, Plane, Clock, MapPin, Users, AlertCircle, ArrowLeft, Save, ShieldCheck } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { cn } from '@/lib/utils';
-
-// Helper for masking ICAO
-const formatICAO = (val: string) => val.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 4);
-
-// Helper for time masking (HH:MM)
-const formatTime = (val: string) => {
-  const digits = val.replace(/\D/g, '').slice(0, 4);
-  if (digits.length >= 3) {
-    return `${digits.slice(0, 2)}:${digits.slice(2)}`;
-  }
-  return digits;
-};
-
-// Calculate time difference in hours (decimal)
-const calculateHours = (start: string, end: string) => {
-  if (start.length !== 5 || end.length !== 5) return 0;
-  
-  const [h1, m1] = start.split(':').map(Number);
-  const [h2, m2] = end.split(':').map(Number);
-  
-  if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return 0;
-
-  let startMins = h1 * 60 + m1;
-  let endMins = h2 * 60 + m2;
-
-  if (endMins < startMins) {
-    endMins += 24 * 60; // Crossed midnight
-  }
-
-  const diffMins = endMins - startMins;
-  return diffMins / 60;
-};
+import { Plane, Clock, MapPin, Calendar, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
+import Link from 'next/link';
 
 export default function NewFlightPage() {
   const router = useRouter();
-  
+  const { user } = useAuth();
+
+  const [aircraftList, setAircraftList] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
   // Form State
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
     aircraft_id: '',
-    origin_icao: '',
-    destination_icao: '',
+    date: new Date().toISOString().split('T')[0],
+    origin: '',
+    destination: '',
     engine_start: '',
     takeoff: '',
     landing: '',
     engine_stop: '',
-    day_night: 'diurno',
-    flight_rules: 'vfr',
-    fuel: '',
-    pob: '',
-    landings: '1',
-    pic_name: '',
-    pic_anac: '',
-    sic_name: '',
-    sic_anac: '',
-    observations: ''
   });
 
-  const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  useEffect(() => {
+    async function loadAircraft() {
+      if (!user) return;
+      try {
+        const { data, error } = await supabase
+          .from('aircraft')
+          .select('id, registration, model');
+        
+        if (error) throw error;
+        setAircraftList(data || []);
+        if (data && data.length > 0) {
+          setFormData(prev => ({ ...prev, aircraft_id: data[0].id }));
+        }
+      } catch (err) {
+        console.error('Error loading aircraft:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadAircraft();
+  }, [user]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setErrorMsg(''); // Clear error when typing
   };
 
-  // Auto-calculated Block Time (Corte - Partida)
-  const totalHours = useMemo(() => {
-    return calculateHours(formData.engine_start, formData.engine_stop);
-  }, [formData.engine_start, formData.engine_stop]);
+  // Helper to get raw minutes from "HH:MM" for sequence validation
+  const getMinutes = (timeStr: string) => {
+    if (!timeStr) return 0;
+    const [h, m] = timeStr.split(':').map(Number);
+    return h * 60 + m;
+  };
+
+  // Helper to combine date and time into TIMESTAMPTZ ISO String
+  const createTimestamp = (dateStr: string, timeStr: string) => {
+    return new Date(`${dateStr}T${timeStr}:00`).toISOString();
+  };
+
+  const calculateHours = (startStr: string, endStr: string) => {
+    const startMins = getMinutes(startStr);
+    let endMins = getMinutes(endStr);
+    
+    // Handle overnight flights (simple approach: if end < start, it's next day)
+    if (endMins < startMins) {
+      endMins += 24 * 60;
+    }
+    
+    return (endMins - startMins) / 60.0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+
+    // 1. SEQUENCE VALIDATION
+    const tEngineStart = getMinutes(formData.engine_start);
+    const tTakeoff = getMinutes(formData.takeoff);
+    const tLanding = getMinutes(formData.landing);
+    const tEngineStop = getMinutes(formData.engine_stop);
+
+    // Strict Sequence Check (assuming same day flight for MVP validation)
+    // If they fly over midnight, they need a more robust date-time picker.
+    // For MVP, we'll enforce strict chronological sequence.
+    if (tTakeoff < tEngineStart) {
+      setErrorMsg('A decolagem não pode ser anterior ao acionamento do motor.');
+      return;
+    }
+    if (tLanding < tTakeoff) {
+      setErrorMsg('O pouso não pode ser anterior à decolagem.');
+      return;
+    }
+    if (tEngineStop < tLanding) {
+      setErrorMsg('O corte do motor não pode ser anterior ao pouso.');
+      return;
+    }
+
+    // 2. CALCULATE DURATIONS
+    const flightHours = calculateHours(formData.takeoff, formData.landing);
+    const engineHours = calculateHours(formData.engine_start, formData.engine_stop);
+
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase.from('flight_logs').insert({
+        aircraft_id: formData.aircraft_id,
+        pic_id: user?.id,
+        date: formData.date,
+        origin: formData.origin.toUpperCase(),
+        destination: formData.destination.toUpperCase(),
+        engine_start: createTimestamp(formData.date, formData.engine_start),
+        takeoff: createTimestamp(formData.date, formData.takeoff),
+        landing: createTimestamp(formData.date, formData.landing),
+        engine_stop: createTimestamp(formData.date, formData.engine_stop),
+        total_flight_hours: flightHours,
+        engine_time: engineHours,
+        status: 'signed'
+      });
+
+      if (error) throw error;
+      
+      router.push('/dashboard');
+      router.refresh(); // Refresh to update KPIs
+    } catch (err: any) {
+      console.error('Erro ao salvar voo:', err);
+      setErrorMsg(err.message || 'Ocorreu um erro ao salvar o registro de voo.');
+      setIsSubmitting(false);
+    }
+  };
+
+  // Preview Calculations for UI feedback
+  const previewFlightHours = formData.takeoff && formData.landing ? calculateHours(formData.takeoff, formData.landing).toFixed(1) : '0.0';
+  const previewEngineHours = formData.engine_start && formData.engine_stop ? calculateHours(formData.engine_start, formData.engine_stop).toFixed(1) : '0.0';
+
+  if (isLoading) {
+    return <div className="p-8 text-slate-400">Carregando formulário...</div>;
+  }
 
   return (
-    <div className="space-y-6 animate-fade-in pb-12 max-w-5xl mx-auto">
+    <div className="max-w-4xl mx-auto py-8 px-4">
+      
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground -ml-4" onClick={() => router.back()}>
-          <ArrowLeft className="w-4 h-4" /> Voltar
-        </Button>
-        <Button className="bg-aero-cyan hover:bg-aero-cyan-light text-aero-navy font-semibold gap-2">
-          <Save className="w-4 h-4" /> Salvar Voo
-        </Button>
+      <div className="flex items-center space-x-4 mb-8">
+        <Link href="/dashboard" className="p-2 bg-slate-800/50 hover:bg-slate-700 rounded-lg text-slate-400 transition-colors">
+          <ArrowLeft className="w-5 h-5" />
+        </Link>
+        <div>
+          <h1 className="text-2xl font-bold text-white">Novo Registro de Voo</h1>
+          <p className="text-slate-400">Preencha o diário de bordo com as horas de relógio.</p>
+        </div>
       </div>
 
-      <div>
-        <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <BookOpen className="w-6 h-6 text-aero-cyan" />
-          Registrar Voo
-        </h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Preencha os dados do diário de bordo com base no registro físico (Parte I e II).
-        </p>
-      </div>
+      {errorMsg && (
+        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-xl flex items-center space-x-3 text-red-400">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <p>{errorMsg}</p>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 stagger-children">
+      <form onSubmit={handleSubmit} className="space-y-8">
         
-        {/* SECTION: Identificação */}
-        <Card className="glass border-border/50">
-          <CardHeader className="pb-3 border-b border-border/50">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Plane className="w-4 h-4 text-aero-cyan" /> Identificação e Trecho
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-5 space-y-5">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Data do Voo</Label>
-                <Input 
-                  type="date" 
-                  value={formData.date} 
-                  onChange={(e) => handleChange('date', e.target.value)}
-                  className="bg-white/[0.02] border-border/50"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Aeronave</Label>
-                <select 
-                  className="flex h-10 w-full rounded-md border border-border/50 bg-white/[0.02] px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-aero-cyan focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  value={formData.aircraft_id}
-                  onChange={(e) => handleChange('aircraft_id', e.target.value)}
-                >
-                  <option value="" disabled className="bg-aero-navy">Selecione...</option>
-                  {mockAircraft.map(a => (
-                    <option key={a.id} value={a.id} className="bg-aero-navy text-foreground">
-                      {a.registration} ({a.model})
-                    </option>
-                  ))}
-                </select>
-              </div>
+        {/* Section 1: General Info */}
+        <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
+            <Plane className="w-5 h-5 mr-2 text-sky-400" />
+            Informações do Voo
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-400">Aeronave</label>
+              <select
+                name="aircraft_id"
+                value={formData.aircraft_id}
+                onChange={handleChange}
+                required
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-colors appearance-none"
+              >
+                {aircraftList.map((ac) => (
+                  <option key={ac.id} value={ac.id}>{ac.registration} ({ac.model})</option>
+                ))}
+              </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>DE (Origem)</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="SBSP" 
-                    value={formData.origin_icao}
-                    onChange={(e) => handleChange('origin_icao', formatICAO(e.target.value))}
-                    className="pl-9 bg-white/[0.02] border-border/50 uppercase mono-data font-bold"
-                    maxLength={4}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>PARA (Destino)</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="SBRJ" 
-                    value={formData.destination_icao}
-                    onChange={(e) => handleChange('destination_icao', formatICAO(e.target.value))}
-                    className="pl-9 bg-white/[0.02] border-border/50 uppercase mono-data font-bold"
-                    maxLength={4}
-                  />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* SECTION: Tempos */}
-        <Card className="glass border-border/50">
-          <CardHeader className="pb-3 border-b border-border/50">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Clock className="w-4 h-4 text-aero-cyan" /> Tempos
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-5 space-y-5">
-            <div className="grid grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs">Partida</Label>
-                <Input 
-                  placeholder="00:00" 
-                  value={formData.engine_start}
-                  onChange={(e) => handleChange('engine_start', formatTime(e.target.value))}
-                  className="bg-white/[0.02] border-border/50 text-center mono-data px-1"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs">Decolagem</Label>
-                <Input 
-                  placeholder="00:00" 
-                  value={formData.takeoff}
-                  onChange={(e) => handleChange('takeoff', formatTime(e.target.value))}
-                  className="bg-white/[0.02] border-border/50 text-center mono-data px-1"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs">Pouso</Label>
-                <Input 
-                  placeholder="00:00" 
-                  value={formData.landing}
-                  onChange={(e) => handleChange('landing', formatTime(e.target.value))}
-                  className="bg-white/[0.02] border-border/50 text-center mono-data px-1"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs">Corte</Label>
-                <Input 
-                  placeholder="00:00" 
-                  value={formData.engine_stop}
-                  onChange={(e) => handleChange('engine_stop', formatTime(e.target.value))}
-                  className="bg-white/[0.02] border-border/50 text-center mono-data px-1 text-aero-rose focus-visible:ring-aero-rose"
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-400">Data do Voo</label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <input
+                  type="date"
+                  name="date"
+                  value={formData.date}
+                  onChange={handleChange}
+                  required
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-colors"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-border/30">
-              <div>
-                <p className="text-sm font-semibold text-foreground">Tempo Total (Block Time)</p>
-                <p className="text-xs text-muted-foreground">Calculado automaticamente (Corte - Partida)</p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold text-aero-cyan mono-data glow-cyan">{totalHours.toFixed(1)}h</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* SECTION: Natureza e Operação */}
-        <Card className="glass border-border/50 lg:col-span-2">
-          <CardHeader className="pb-3 border-b border-border/50">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-aero-cyan" /> Regras e Operação
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-5">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
-              
-              <div className="space-y-2">
-                <Label>Turno</Label>
-                <div className="flex bg-white/[0.02] rounded-md border border-border/50 p-1">
-                  <button 
-                    type="button"
-                    onClick={() => handleChange('day_night', 'diurno')}
-                    className={cn("flex-1 text-xs font-semibold py-1.5 rounded-sm transition-colors", formData.day_night === 'diurno' ? "bg-aero-cyan text-aero-navy" : "text-muted-foreground hover:text-foreground")}
-                  >
-                    Diurno
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => handleChange('day_night', 'noturno')}
-                    className={cn("flex-1 text-xs font-semibold py-1.5 rounded-sm transition-colors", formData.day_night === 'noturno' ? "bg-aero-cyan text-aero-navy" : "text-muted-foreground hover:text-foreground")}
-                  >
-                    Noturno
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Regra</Label>
-                <div className="flex bg-white/[0.02] rounded-md border border-border/50 p-1">
-                  <button 
-                    type="button"
-                    onClick={() => handleChange('flight_rules', 'vfr')}
-                    className={cn("flex-1 text-xs font-semibold py-1.5 rounded-sm transition-colors", formData.flight_rules === 'vfr' ? "bg-aero-cyan text-aero-navy" : "text-muted-foreground hover:text-foreground")}
-                  >
-                    VFR
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => handleChange('flight_rules', 'ifr')}
-                    className={cn("flex-1 text-xs font-semibold py-1.5 rounded-sm transition-colors", formData.flight_rules === 'ifr' ? "bg-aero-cyan text-aero-navy" : "text-muted-foreground hover:text-foreground")}
-                  >
-                    IFR
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>POB / Carga</Label>
-                <Input 
-                  placeholder="Ex: 4" 
-                  type="number"
-                  value={formData.pob}
-                  onChange={(e) => handleChange('pob', e.target.value)}
-                  className="bg-white/[0.02] border-border/50 text-center mono-data"
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-400">Origem (ICAO)</label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <input
+                  type="text"
+                  name="origin"
+                  placeholder="SBSP"
+                  value={formData.origin}
+                  onChange={handleChange}
+                  required
+                  maxLength={4}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white uppercase focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-colors"
                 />
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label>Combustível</Label>
-                <Input 
-                  placeholder="Ex: 150 Lts" 
-                  value={formData.fuel}
-                  onChange={(e) => handleChange('fuel', e.target.value)}
-                  className="bg-white/[0.02] border-border/50 text-center"
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-400">Destino (ICAO)</label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <input
+                  type="text"
+                  name="destination"
+                  placeholder="SBJD"
+                  value={formData.destination}
+                  onChange={handleChange}
+                  required
+                  maxLength={4}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white uppercase focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-colors"
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label>Pousos (NAT)</Label>
-                <Input 
-                  placeholder="1 / Pouso" 
-                  value={formData.landings}
-                  onChange={(e) => handleChange('landings', e.target.value)}
-                  className="bg-white/[0.02] border-border/50 text-center"
-                />
-              </div>
-
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* SECTION: Tripulação */}
-        <Card className="glass border-border/50">
-          <CardHeader className="pb-3 border-b border-border/50">
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Users className="w-4 h-4 text-aero-cyan" /> Tripulação (Crew)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-5 space-y-5">
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs font-bold text-muted-foreground uppercase mb-2">Piloto em Comando (PIC)</p>
-                <div className="grid grid-cols-[1fr_100px] gap-3">
-                  <Input 
-                    placeholder="Nome completo (PIC)" 
-                    value={formData.pic_name}
-                    onChange={(e) => handleChange('pic_name', e.target.value)}
-                    className="bg-white/[0.02] border-border/50"
-                  />
-                  <Input 
-                    placeholder="ANAC" 
-                    value={formData.pic_anac}
-                    onChange={(e) => handleChange('pic_anac', e.target.value)}
-                    className="bg-white/[0.02] border-border/50 text-center mono-data"
-                  />
-                </div>
-              </div>
-              <div className="pt-2 border-t border-border/30">
-                <p className="text-xs font-bold text-muted-foreground uppercase mb-2">Segundo em Comando (SIC) - Opcional</p>
-                <div className="grid grid-cols-[1fr_100px] gap-3">
-                  <Input 
-                    placeholder="Nome completo (SIC)" 
-                    value={formData.sic_name}
-                    onChange={(e) => handleChange('sic_name', e.target.value)}
-                    className="bg-white/[0.02] border-border/50"
-                  />
-                  <Input 
-                    placeholder="ANAC" 
-                    value={formData.sic_anac}
-                    onChange={(e) => handleChange('sic_anac', e.target.value)}
-                    className="bg-white/[0.02] border-border/50 text-center mono-data"
-                  />
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* SECTION: Parte II */}
-        <Card className="glass border-border/50 flex flex-col">
-          <CardHeader className="pb-3 border-b border-border/50">
-            <CardTitle className="text-base font-semibold flex items-center gap-2 text-aero-amber">
-              <AlertCircle className="w-4 h-4" /> Parte II - Situação Técnica
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-5 flex flex-col flex-1">
-            <div className="flex-1 flex flex-col space-y-2">
-              <Label>Ocorrências / Discrepâncias</Label>
-              <Textarea 
-                placeholder="Voo sem alterações ou descreva as ocorrências..." 
-                className="resize-none flex-1 min-h-[140px] bg-white/[0.02] border-border/50 focus-visible:ring-aero-amber"
-                value={formData.observations}
-                onChange={(e) => handleChange('observations', e.target.value)}
+        {/* Section 2: Chronology */}
+        <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center">
+            <Clock className="w-5 h-5 mr-2 text-emerald-400" />
+            Cronologia (Horário Local)
+          </h2>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-400">1. Motor (ON)</label>
+              <input
+                type="time"
+                name="engine_start"
+                value={formData.engine_start}
+                onChange={handleChange}
+                required
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
               />
-              <p className="text-[10px] text-muted-foreground mt-1">
-                Deixe em branco ou escreva "Voo sem alterações" se a aeronave estiver 100% operacional.
-              </p>
             </div>
-          </CardContent>
-        </Card>
 
-      </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-400">2. Decolagem</label>
+              <input
+                type="time"
+                name="takeoff"
+                value={formData.takeoff}
+                onChange={handleChange}
+                required
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-400">3. Pouso</label>
+              <input
+                type="time"
+                name="landing"
+                value={formData.landing}
+                onChange={handleChange}
+                required
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-400">4. Motor (OFF)</label>
+              <input
+                type="time"
+                name="engine_stop"
+                value={formData.engine_stop}
+                onChange={handleChange}
+                required
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: Summary & Submit */}
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between">
+          <div className="flex space-x-8 mb-6 md:mb-0">
+            <div>
+              <p className="text-sm text-slate-400 font-medium">Tempo de Voo</p>
+              <p className="text-2xl font-bold text-white">{previewFlightHours}h</p>
+            </div>
+            <div className="w-px h-12 bg-slate-800"></div>
+            <div>
+              <p className="text-sm text-slate-400 font-medium">Tempo de Motor <span className="text-xs text-sky-400 ml-1">(Será somado à aeronave)</span></p>
+              <p className="text-2xl font-bold text-white">{previewEngineHours}h</p>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full md:w-auto px-8 py-3 bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white font-medium rounded-xl flex items-center justify-center transition-all shadow-lg shadow-sky-500/20"
+          >
+            {isSubmitting ? (
+              <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+            ) : (
+              <>
+                <CheckCircle2 className="w-5 h-5 mr-2" />
+                Registrar Voo
+              </>
+            )}
+          </button>
+        </div>
+
+      </form>
     </div>
   );
 }

@@ -6,8 +6,8 @@
 
 import { useParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useState } from 'react';
-import { mockAircraft } from '@/lib/mock-data';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import {
   Plane,
@@ -61,16 +61,48 @@ export default function AircraftDetailLayout({
   const { id } = useParams();
   const router = useRouter();
   const pathname = usePathname();
-  const [editOpen, setEditOpen] = useState(false);
-  const [, forceUpdate] = useState(0);
-
-  const aircraft = mockAircraft.find(a => a.id === id);
+  const [aircraft, setAircraft] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Local edit state
   const [editReg, setEditReg] = useState('');
   const [editModel, setEditModel] = useState('');
   const [editYear, setEditYear] = useState('');
   const [editStatus, setEditStatus] = useState<'active' | 'maintenance' | 'grounded'>('active');
+
+  useEffect(() => {
+    async function loadAircraft() {
+      if (!id) return;
+      try {
+        const { data, error } = await supabase
+          .from('aircraft')
+          .select('*')
+          .eq('id', id)
+          .single();
+        
+        if (error || !data) throw error;
+        
+        // Ensure default status
+        if (!data.status) data.status = 'active';
+        
+        setAircraft(data);
+      } catch (err) {
+        console.error('Error loading aircraft in layout:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadAircraft();
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4 animate-pulse">
+        <div className="w-16 h-16 rounded-full bg-white/5" />
+        <div className="w-48 h-6 bg-white/5 rounded" />
+      </div>
+    );
+  }
 
   if (!aircraft) {
     return (
@@ -99,15 +131,32 @@ export default function AircraftDetailLayout({
     setEditOpen(true);
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!aircraft) return;
-    // Mutate mock data in-memory (MVP)
-    aircraft.registration = editReg.toUpperCase();
-    aircraft.model = editModel;
-    aircraft.year = parseInt(editYear) || aircraft.year;
-    aircraft.status = editStatus;
-    setEditOpen(false);
-    forceUpdate(n => n + 1); // trigger re-render
+    
+    try {
+      const { error } = await supabase
+        .from('aircraft')
+        .update({
+          registration: editReg.toUpperCase(),
+          model: editModel,
+          year: parseInt(editYear) || aircraft.year,
+        })
+        .eq('id', aircraft.id);
+
+      if (error) throw error;
+
+      // Update local state to reflect changes
+      setAircraft({
+        ...aircraft,
+        registration: editReg.toUpperCase(),
+        model: editModel,
+        year: parseInt(editYear) || aircraft.year,
+      });
+      setEditOpen(false);
+    } catch (err) {
+      console.error('Erro ao atualizar aeronave:', err);
+    }
   }
 
   return (
